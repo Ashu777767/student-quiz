@@ -1,0 +1,37 @@
+.quiz-container {
+    max-width: 800px;
+    margin: 0 auto;
+    transition: all 0.3s ease;
+}
+
+.question-card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.option:hover {
+    transform: translateY(-2px);
+}
+
+.progress-bar {
+    height: 8px;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+#resultChart {
+    max-height: 400px;
+}
+
+.strength-card {
+    border-left: 4px solid #10B981;
+}
+
+.weakness-card {
+    border-left: 4px solid #EF4444;
+}
+
+.floating-btn {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
