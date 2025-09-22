@@ -270,6 +270,73 @@ function showResults() {
             }
         }
     });
+  // === Circular Chart for overall correctness ===
+ // === Circular Chart for overall correctness ===
+const totalCorrect = categories.reduce((sum, cat) => sum + categoryScores[cat].correct, 0);
+const totalQuestionsAll = categories.reduce((sum, cat) => sum + categoryScores[cat].total, 0);
+const overallPercent = Math.round((totalCorrect / totalQuestionsAll) * 100);
+
+const perfCtx = document.getElementById('performanceChart').getContext('2d');
+
+// Animation setup
+let currentPercent = 0;
+let animationId;
+function animateCenterText(target) {
+    cancelAnimationFrame(animationId);
+    function step() {
+        if (currentPercent < target) {
+            currentPercent++;
+            performanceChart.update();
+            animationId = requestAnimationFrame(step);
+        }
+    }
+    step();
+}
+
+// Gradient color
+let gradient = perfCtx.createLinearGradient(0, 0, 0, 200);
+gradient.addColorStop(0, '#10B981');
+gradient.addColorStop(1, '#3B82F6');
+
+const performanceChart = new Chart(perfCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Correct', 'Incorrect'],
+        datasets: [{
+            data: [overallPercent, 100 - overallPercent],
+            backgroundColor: [gradient, '#E5E7EB'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        cutout: '75%',
+        plugins: {
+            legend: { display: true, position: 'bottom' }
+        }
+    },
+    plugins: [{
+        id: 'centerText',
+        afterDraw: (chart) => {
+            const {ctx, chartArea: {left, right, top, bottom}} = chart;
+            ctx.save();
+            const centerX = (left + right) / 2;
+            const centerY = (top + bottom) / 2;
+            const fontSize = Math.min(right - left, bottom - top) / 5;
+            ctx.font = `${fontSize}px sans-serif`;
+            ctx.fillStyle = "#111827"; 
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(currentPercent + "%", centerX, centerY);
+            ctx.restore();
+        }
+    }]
+});
+
+// 🔹 Start animation
+animateCenterText(overallPercent);
+
+
+
 
     const strengthsList = document.getElementById('strengths');
     const weaknessesList = document.getElementById('weaknesses');
