@@ -169,11 +169,25 @@ let score = 0;
 let categoryScores = {};
 
 function startQuiz() {
+    // Save user info from the form
+    const userName = document.getElementById('inputName').value || "Anonymous";
+    const userPhone = document.getElementById('inputPhone').value || "-";
+    const userEmail = document.getElementById('inputEmail').value || "-";
+
+    // Store in global variables for later use in the results
+    window.currentUser = { userName, userPhone, userEmail };
+
+    // Hide intro, show quiz
     document.getElementById('intro').classList.add('hidden');
     document.getElementById('quiz').classList.remove('hidden');
+
+    // Show first question
     showQuestion();
+
+    // Replace feather icons
     feather.replace();
 }
+
 
 function showQuestion() {
     const questionContainer = document.getElementById('question-container');
@@ -244,6 +258,7 @@ function calculateResults() {
 }
 
 function showResults() {
+    // Hide quiz, show results section
     document.getElementById('quiz').classList.add('hidden');
     document.getElementById('results').classList.remove('hidden');
 
@@ -251,93 +266,142 @@ function showResults() {
     const correctAnswers = categories.map(cat => categoryScores[cat].correct);
     const totalQuestions = categories.map(cat => categoryScores[cat].total);
 
+    // ===== User Info & Report =====
+    document.getElementById('userName').textContent = window.currentUser.userName;
+    document.getElementById('userPhone').textContent = window.currentUser.userPhone;
+    document.getElementById('userEmail').textContent = window.currentUser.userEmail;
+    document.getElementById('quizDate').textContent = new Date().toLocaleDateString();
+    document.getElementById('totalScore').textContent = `${score} / ${quizData.length}`;
+
+    // ===== Generate Summary Badges =====
+    const strengths = [];
+    const weaknesses = [];
+
+    categories.forEach(cat => {
+        const pct = (categoryScores[cat].correct / categoryScores[cat].total) * 100;
+        if (pct >= 80) strengths.push(cat);
+        else if (pct < 50) weaknesses.push(cat);
+    });
+
+    let summaryHTML = `You scored <strong>${score}</strong> out of <strong>${quizData.length}</strong>.<br>`;
+
+    if (strengths.length > 0) {
+        summaryHTML += `Strong in: `;
+        strengths.forEach(str => {
+            summaryHTML += `<span class="inline-block bg-green-200 text-green-800 px-2 py-1 rounded-full mr-2 mb-1">${str}</span>`;
+        });
+        summaryHTML += '<br>';
+    }
+
+    if (weaknesses.length > 0) {
+        summaryHTML += `Needs Improvement: `;
+        weaknesses.forEach(wk => {
+            summaryHTML += `<span class="inline-block bg-red-200 text-red-800 px-2 py-1 rounded-full mr-2 mb-1">${wk}</span>`;
+        });
+        summaryHTML += '<br>';
+    }
+
+    document.getElementById('reportSummary').innerHTML = summaryHTML;
+
+    // ===== Score Summary Bar Chart =====
     const ctx = document.getElementById('resultChart').getContext('2d');
     new Chart(ctx, {
         type: 'bar',
         data: {
             labels: categories,
             datasets: [
-                { label: 'Correct Answers', data: correctAnswers, backgroundColor: '#4F46E5', borderRadius: 4 },
-                { label: 'Total Questions', data: totalQuestions, backgroundColor: '#E5E7EB', borderRadius: 4 }
+                { 
+                    label: 'Correct Answers', 
+                    data: correctAnswers, 
+                    backgroundColor: '#30070aff', 
+                    borderRadius: 4 
+                },
+                { 
+                    label: 'Total Questions', 
+                    data: totalQuestions, 
+                    backgroundColor: '#ceb216ff', // light gray for full bar
+                    borderRadius: 4 
+                }
             ]
         },
         options: {
             responsive: true,
-            scales: { y: { beginAtZero: true, max: Math.max(...totalQuestions)+1, ticks: { stepSize: 1 } } },
+            scales: { 
+                y: { beginAtZero: true, max: Math.max(...totalQuestions)+1, ticks: { stepSize: 1 } } 
+            },
             plugins: {
                 legend: { position: 'top' },
-                tooltip: { callbacks: { label: function(context){ return `${context.dataset.label}: ${context.raw}`; } } }
+                tooltip: { 
+                    callbacks: { 
+                        label: function(context){ return `${context.dataset.label}: ${context.raw}`; } 
+                    } 
+                }
             }
         }
     });
-  // === Circular Chart for overall correctness ===
- // === Circular Chart for overall correctness ===
-const totalCorrect = categories.reduce((sum, cat) => sum + categoryScores[cat].correct, 0);
-const totalQuestionsAll = categories.reduce((sum, cat) => sum + categoryScores[cat].total, 0);
-const overallPercent = Math.round((totalCorrect / totalQuestionsAll) * 100);
 
-const perfCtx = document.getElementById('performanceChart').getContext('2d');
+    // ===== Overall Correctness Circular Chart =====
+    const totalCorrect = categories.reduce((sum, cat) => sum + categoryScores[cat].correct, 0);
+    const totalQuestionsAll = categories.reduce((sum, cat) => sum + categoryScores[cat].total, 0);
+    const overallPercent = Math.round((totalCorrect / totalQuestionsAll) * 100);
 
-// Animation setup
-let currentPercent = 0;
-let animationId;
-function animateCenterText(target) {
-    cancelAnimationFrame(animationId);
-    function step() {
-        if (currentPercent < target) {
-            currentPercent++;
-            performanceChart.update();
-            animationId = requestAnimationFrame(step);
+    const perfCtx = document.getElementById('performanceChart').getContext('2d');
+
+    let currentPercent = 0;
+    let animationId;
+    function animateCenterText(target) {
+        cancelAnimationFrame(animationId);
+        function step() {
+            if (currentPercent < target) {
+                currentPercent++;
+                performanceChart.update();
+                animationId = requestAnimationFrame(step);
+            }
         }
+        step();
     }
-    step();
-}
 
-// Gradient color
-let gradient = perfCtx.createLinearGradient(0, 0, 0, 200);
-gradient.addColorStop(0, '#10B981');
-gradient.addColorStop(1, '#3B82F6');
+    let gradient = perfCtx.createLinearGradient(0, 0, 0, 200);
+    gradient.addColorStop(0, '#10B981');
+    gradient.addColorStop(1, '#3B82F6');
 
-const performanceChart = new Chart(perfCtx, {
-    type: 'doughnut',
-    data: {
-        labels: ['Correct', 'Incorrect'],
-        datasets: [{
-            data: [overallPercent, 100 - overallPercent],
-            backgroundColor: [gradient, '#E5E7EB'],
-            borderWidth: 0
+    const performanceChart = new Chart(perfCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Correct', 'Incorrect'],
+            datasets: [{
+                data: [overallPercent, 100 - overallPercent],
+                backgroundColor: [gradient, '#E5E7EB'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            cutout: '75%',
+            plugins: {
+                legend: { display: true, position: 'bottom' }
+            }
+        },
+        plugins: [{
+            id: 'centerText',
+            afterDraw: (chart) => {
+                const {ctx, chartArea: {left, right, top, bottom}} = chart;
+                ctx.save();
+                const centerX = (left + right) / 2;
+                const centerY = (top + bottom) / 2;
+                const fontSize = Math.min(right - left, bottom - top) / 5;
+                ctx.font = `${fontSize}px sans-serif`;
+                ctx.fillStyle = "#111827"; 
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(currentPercent + "%", centerX, centerY);
+                ctx.restore();
+            }
         }]
-    },
-    options: {
-        cutout: '75%',
-        plugins: {
-            legend: { display: true, position: 'bottom' }
-        }
-    },
-    plugins: [{
-        id: 'centerText',
-        afterDraw: (chart) => {
-            const {ctx, chartArea: {left, right, top, bottom}} = chart;
-            ctx.save();
-            const centerX = (left + right) / 2;
-            const centerY = (top + bottom) / 2;
-            const fontSize = Math.min(right - left, bottom - top) / 5;
-            ctx.font = `${fontSize}px sans-serif`;
-            ctx.fillStyle = "#111827"; 
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(currentPercent + "%", centerX, centerY);
-            ctx.restore();
-        }
-    }]
-});
+    });
 
-// 🔹 Start animation
-animateCenterText(overallPercent);
+    animateCenterText(overallPercent);
 
-
-
-
+    // ===== Strengths & Weaknesses List =====
     const strengthsList = document.getElementById('strengths');
     const weaknessesList = document.getElementById('weaknesses');
     strengthsList.innerHTML = '';
@@ -345,8 +409,8 @@ animateCenterText(overallPercent);
 
     categories.forEach(cat => {
         const percentage = (categoryScores[cat].correct / categoryScores[cat].total) * 100;
-        if (percentage >= 75) strengthsList.innerHTML += `<li>${cat} (${Math.round(percentage)}% correct)</li>`;
-        else if (percentage < 50) weaknessesList.innerHTML += `<li>${cat} (${Math.round(percentage)}% correct)</li>`;
+        if (percentage >= 75) strengthsList.innerHTML += `<li>${cat}</li>`;
+        else if (percentage < 50) weaknessesList.innerHTML += `<li>${cat}</li>`;
     });
 
     if (strengthsList.innerHTML === '') strengthsList.innerHTML = '<li>No particular strengths identified</li>';
@@ -354,6 +418,7 @@ animateCenterText(overallPercent);
 
     feather.replace();
 }
+
 
 function restartQuiz() {
     currentQuestion = 0;
@@ -368,3 +433,52 @@ function restartQuiz() {
 document.addEventListener('DOMContentLoaded', function() {
     feather.replace();
 });
+async function downloadReport() {
+    const { jsPDF } = window.jspdf;
+
+    // Get the buttons to hide
+    const downloadBtn = document.querySelector("#results button[onclick='downloadReport()']");
+    const restartBtn = document.querySelector("#results button[onclick='restartQuiz()']");
+
+    // Hide buttons temporarily
+    if (downloadBtn) downloadBtn.style.display = "none";
+    if (restartBtn) restartBtn.style.display = "none";
+
+    // Capture the entire #results section
+    const element = document.getElementById("results");
+    
+    // Use html2canvas with scale for better resolution
+    const canvas = await html2canvas(element, { scale: 2 });
+    const imgData = canvas.toDataURL("image/png");
+
+    // Create jsPDF document
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = 210;  // A4 width in mm
+    const pageHeight = 297; // A4 height in mm
+    const margin = 10;
+    const imgWidth = pageWidth - margin * 2;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = margin;
+
+    // Add first page
+    pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight - margin * 2;
+
+    // Add new pages if content exceeds 1 page
+    while (heightLeft > 0) {
+        pdf.addPage();
+        position = -heightLeft + margin;
+        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight - margin * 2;
+    }
+
+    // Use dynamic user name from report for filename
+    const userName = document.getElementById('userName').textContent || "User";
+    pdf.save(`Quiz_Report_${userName}.pdf`);
+
+    // Show the buttons again
+    if (downloadBtn) downloadBtn.style.display = "inline-flex";
+    if (restartBtn) restartBtn.style.display = "inline-flex";
+}
